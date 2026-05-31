@@ -1,0 +1,173 @@
+@page "/soap"
+@inject ApiClient Api
+@inject CurrentUser User
+
+<PageTitle>AI 病歷草稿</PageTitle>
+
+<h1>AI 病歷草稿（三欄式）</h1>
+
+<div class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label">就醫 ID</label>
+        <input class="form-control" @bind="_encounterId" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label">文件類型</label>
+        <select class="form-select" @bind="_noteType">
+            <option value="SOAP">門診 SOAP</option>
+            <option value="Discharge">出院病摘</option>
+            <option value="Consult">會診摘要</option>
+            <option value="Nursing">護理紀錄</option>
+            <option value="Education">病人衛教</option>
+            <option value="DraftPrescription">待核准處方草稿</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label">角色</label>
+        <select class="form-select" @bind="Role">
+            <option value="Physician">醫師</option>
+            <option value="Nurse">護理師</option>
+            <option value="Pharmacist">藥師</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary" @onclick="Generate" disabled="@_busy">產生 AI 草稿</button>
+    </div>
+</div>
+
+<p class="text-muted">提示：就醫 ID 輸入 <code>ENC-6006</code> 並選「待核准處方草稿」可示範過敏（盤尼西林 + Amoxicillin）Critical 攜截。</p>
+
+@if (_busy) { <p>產生中…</p> }
+@if (_error is not null) { <div class="alert alert-danger">@_error</div> }
+
+@if (_draft is not null)
+{
+    @if (_draft.PromptInjectionDetected)
+    {
+        <div class="alert alert-danger"><strong>⛔ 偵測到 Prompt Injection — 已阻斷流程。</strong></div>
+    }
+
+    @foreach (var f in _draft.SafetyFlags)
+    {
+        <div class="alert @(f.Severity == FlagSeverity.Critical ? "alert-danger" : "alert-warning")">
+            <strong>[@f.RuleId] @f.Severity</strong> — @f.Description
+            @if (f.RecommendedAction is not null) { <div>建議：@f.RecommendedAction</div> }
+        </div>
+    }
+
+    @if (_draft.MissingInformation.Count > 0)
+    {
+        <div class="alert alert-info">
+            <strong>資料不足：</strong> @string.Join("、", _draft.MissingInformation)
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-md-4">
+            <h5>① 來源資料</h5>
+            <div class="border p-2" style="max-height:480px;overflow:auto">
+                @if (_draft.SourceReferences.Count == 0) { <em>無來源</em> }
+                @foreach (var s in _draft.SourceReferences)
+                {
+                    <div class="mb-2">
+                        <span class="badge bg-secondary">@s.Id</span>
+                        <small>@s.SourceSystem / @s.SourceType (@s.ResourceId)</small>
+                        @if (s.Quote is not null) { <div><small>「@s.Quote」</small></div> }
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="col-md-4">
+            <h5>② AI 草稿 <span class="badge bg-warning text-dark">AI 草稿</span></h5>
+            <div class="border p-2" style="max-height:480px;overflow:auto">
+                @foreach (var sec in _draft.Sections)
+                {
+                    <div class="mb-2">
+                        <strong>@sec.Title</strong>
+                        <small class="text-muted">(信心 @sec.Confidence.ToString("P0"))</small>
+                        <pre class="mb-1" style="white-space:pre-wrap">@sec.Content</pre>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="col-md-4">
+            <h5>③ 醫事人員正式內容</h5>
+            <textarea class="form-control" rows="18" @bind="_finalText"></textarea>
+        </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-2 align-items-center">
+        <button class="btn btn-success" @onclick="Approve" disabled="@(_draft.SafetyFlags.Any(f => f.Severity == FlagSeverity.Critical))">核准</button>
+        <button class="btn btn-outline-danger" @onclick="Reject">退回</button>
+        <button class="btn btn-warning" @onclick="Sign" disabled="@(!_approved)">電子簽章</button>
+        <button class="btn btn-danger" @onclick="WriteFinal" disabled="@(!_signed)">寫入正式 EMR</button>
+        <span class="ms-3">@_status</span>
+    </div>
+
+    @if (_draft.SafetyFlags.Any(f => f.Severity == FlagSeverity.Critical))
+    {
+        <div class="alert alert-danger mt-2">含 Critical 安全旗標，系統層禁止核准，須先由醫事人員處置。</div>
+    }
+}
+
+@code {
+    private string _encounterId = "ENC-6001";
+    private string _noteType = "SOAP";
+
+    private string Role
+    {
+        get => User.Roles.FirstOrDefault() ?? "Physician";
+        set => User.Roles = [value];
+    }
+    private DraftNoteResponse? _draft;
+    private string _finalText = "";
+    private string? _error;
+    private string? _status;
+    private bool _busy, _approved, _signed;
+
+    private async Task Generate()
+    {
+        _busy = true; _error = null; _status = null; _approved = false; _signed = false;
+        try
+        {
+            var req = new GenerateNoteRequest(_encounterId, Guid.NewGuid(), _noteType, null, AutonomyLevel.L4);
+            _draft = _noteType == "DraftPrescription"
+                ? await Api.GeneratePrescriptionAsync(req)
+                : await Api.GenerateNoteAsync(req);
+            if (_draft is null) { _error = "產生失敗（可能 AI 已停用或資料不足）。"; return; }
+            _finalText = string.Join("\n\n", _draft.Sections.Select(s => $"{s.Title}\n{s.Content}"));
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task Approve()
+    {
+        if (_draft is null) return;
+        var (ok, status) = await Api.ApproveAsync(_draft.DraftId);
+        _approved = ok;
+        _status = ok ? "已核准" : $"核准遭拒（HTTP {status}）";
+    }
+
+    private async Task Reject()
+    {
+        if (_draft is null) return;
+        var ok = await Api.RejectAsync(_draft.DraftId, "醫事人員退回");
+        _approved = false; _signed = false;
+        _status = ok ? "已退回草稿" : "退回失敗";
+    }
+
+    private async Task Sign()
+    {
+        if (_draft is null) return;
+        _signed = await Api.SignAsync(_draft.DraftId);
+        _status = _signed ? "已電子簽章" : "簽章失敗";
+    }
+
+    private async Task WriteFinal()
+    {
+        if (_draft is null) return;
+        var (ok, status) = await Api.WriteFinalAsync(_draft.DraftId);
+        _status = ok ? "已寫入正式 EMR" : $"寫入遭拒（HTTP {status}）";
+    }
+}
