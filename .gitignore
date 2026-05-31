@@ -1,0 +1,39 @@
+# .NET build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+build/
+bld/
+
+# Test results
+[Tt]est[Rr]esults/
+*.trx
+*.coverage
+*.coverage.xml
+
+# Rider / VS / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+*.userprefs
+
+# Local secrets & env (never commit API keys)
+*.env
+appsettings.*.local.json
+secrets.json
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# NuGet
+*.nupkg
+.nuget/
+packages/
+
+# Vendored client libraries (restore via LibMan/CDN)
+ClinScribe/src/ClinScribe.Web/wwwroot/lib/

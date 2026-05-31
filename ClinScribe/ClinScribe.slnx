@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ClinScribe.AiGateway/ClinScribe.AiGateway.csproj" />
+    <Project Path="src/ClinScribe.Api/ClinScribe.Api.csproj" />
+    <Project Path="src/ClinScribe.Domain/ClinScribe.Domain.csproj" />
+    <Project Path="src/ClinScribe.Infrastructure/ClinScribe.Infrastructure.csproj" />
+    <Project Path="src/ClinScribe.Web/ClinScribe.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ClinScribe.Tests/ClinScribe.Tests.csproj" />
+  </Folder>
+</Solution>
