@@ -1,0 +1,3 @@
+# 確保文字檔以 LF 結尾、UTF-8 編碼（醫療 Agent 系統）
+* text=auto eol=lf
+*.png binary
