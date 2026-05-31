@@ -75,7 +75,7 @@ public sealed class SafetyGuardrail
     // 已知過敏原關鍵字 → drugClass
     private static readonly (string keyword, string drugClass)[] AllergenKeywords =
     {
-        ("penicillin", "penicillin"), ("盤尼西林", "penicillin"), ("青黉素", "penicillin"),
+        ("penicillin", "penicillin"), ("盤尼西林", "penicillin"), ("青黴素", "penicillin"),
         ("cephalosporin", "cephalosporin"), ("頭孢", "cephalosporin"),
         ("sulfa", "sulfa"), ("磺胺", "sulfa"),
         ("aspirin", "aspirin"), ("阿斯匹靈", "aspirin"),
@@ -180,7 +180,7 @@ public sealed class SafetyGuardrail
             "pregnancy" => "懷孕",
             "pediatric" => "兒童",
             "geriatric" => "高齡",
-            "renal" => "腰功能不全",
+            "renal" => "腎功能不全",
             "hepatic" => "肝功能不全",
             _ => p
         }));
