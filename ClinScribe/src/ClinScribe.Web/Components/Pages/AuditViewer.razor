@@ -1,0 +1,52 @@
+@page "/audit"
+@inject ApiClient Api
+
+<PageTitle>稽核紀錄</PageTitle>
+
+<h1>稽核紀錄（雜湊鏈）</h1>
+
+<button class="btn btn-outline-secondary btn-sm mb-3" @onclick="Load">重新整理</button>
+
+@if (_loading) { <p>載入中…</p> }
+else if (_result is null) { <div class="alert alert-danger">無法載入稽核紀錄。</div> }
+else
+{
+    <div class="alert @(_result.ChainValid ? "alert-success" : "alert-danger")">
+        鏈完整性：<strong>@(_result.ChainValid ? "✔ 有效（未被竄改）" : "✘ 失效")</strong>
+        ｜ 筆數：@_result.Count
+    </div>
+
+    <table class="table table-sm table-striped">
+        <thead>
+            <tr><th>#</th><th>時間</th><th>操作者</th><th>動作</th><th>就醫</th><th>模型</th><th>RowHash</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var e in _result.Items)
+            {
+                <tr>
+                    <td>@e.Id</td>
+                    <td>@e.At.LocalDateTime.ToString("MM-dd HH:mm:ss")</td>
+                    <td>@e.Actor (@e.ActorRole)</td>
+                    <td>@e.Action</td>
+                    <td>@e.EncounterId</td>
+                    <td>@e.ModelVersion</td>
+                    <td><code>@(e.RowHash.Length > 12 ? e.RowHash[..12] : e.RowHash)…</code></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private ApiClient.AuditResult? _result;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        _loading = true;
+        _result = await Api.GetAuditAsync();
+        _loading = false;
+    }
+}

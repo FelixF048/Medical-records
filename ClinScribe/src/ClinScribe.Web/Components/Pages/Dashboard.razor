@@ -1,0 +1,71 @@
+@page "/dashboard"
+@inject ApiClient Api
+
+<PageTitle>工作清單</PageTitle>
+
+<h1>待審核 AI 草稿工作清單</h1>
+
+<button class="btn btn-outline-secondary btn-sm mb-3" @onclick="Load">重新整理</button>
+
+@if (_loading)
+{
+    <p>載入中…</p>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">無法載入：@_error</div>
+}
+else if (_items is null || _items.Count == 0)
+{
+    <div class="alert alert-info">目前沒有待審核草稿。請至「AI 病歷草稿」頁產生。</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr><th>草稿 ID</th><th>類型</th><th>就醫</th><th>狀態</th><th>最高風險</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var w in _items)
+            {
+                <tr>
+                    <td><code>@w.Id</code></td>
+                    <td>@w.Title</td>
+                    <td>@w.EncounterId</td>
+                    <td>@w.Status</td>
+                    <td>
+                        @if (w.TopSeverity is { } sev)
+                        {
+                            <span class="badge @SeverityClass(sev)">@sev</span>
+                        }
+                        else { <span>—</span> }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<WorkItem>? _items;
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        _loading = true; _error = null;
+        try { _items = await Api.GetWorklistAsync(); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private static string SeverityClass(FlagSeverity s) => s switch
+    {
+        FlagSeverity.Critical => "bg-danger",
+        FlagSeverity.High => "bg-warning text-dark",
+        FlagSeverity.Warning => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
+}

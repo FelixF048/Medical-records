@@ -1,0 +1,50 @@
+@page "/"
+
+<PageTitle>ClinScribe 醫療 Agent</PageTitle>
+
+<h1>ClinScribe 醫療 Agent 系統</h1>
+
+<p class="lead">
+    全自動「草稿生成 + 安全檢核」助理。AI 僅產生<strong>草稿、摘要、待核准建議</strong>，
+    所有最終診斷、處方、醫囑、正式病歷寫入與電子簽章皆<strong>必須由醫事人員核准</strong>。
+</p>
+
+<div class="alert alert-warning">
+    <strong>安全紅線（系統層強制）：</strong>
+    <ul class="mb-0">
+        <li>WriteToFinalEMR / SignClinicalRecord 工具 <code>AutoExecutable = false</code></li>
+        <li>含 <code>Critical</code> 安全旗標的草稿無法核准</li>
+        <li>核准 → 簽章 → 寫入 EMR 須依序完成，全程寫入雜湊鏈稽核</li>
+        <li>偵測 Prompt Injection / 資料不足時，停止產出結論</li>
+    </ul>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">工作清單</h5>
+                <p class="card-text">查看待審核 AI 草稿。</p>
+                <a href="dashboard" class="btn btn-primary">前往</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">AI 病歷草稿</h5>
+                <p class="card-text">三欄式來源／AI 草稿／正式編輯，含核准與簽章。</p>
+                <a href="soap" class="btn btn-primary">前往</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">稽核紀錄</h5>
+                <p class="card-text">append-only 雜湊鏈與鏈完整性驗證。</p>
+                <a href="audit" class="btn btn-primary">前往</a>
+            </div>
+        </div>
+    </div>
+</div>
